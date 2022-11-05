@@ -1,0 +1,118 @@
+body {
+    background-color: #F8F8F8;
+    font-family: Helvetica;
+}
+
+div#container { margin-top: 1%; }
+
+div#space {
+    display: block;
+    height: 10px;
+    margin: 0 auto;
+    width: 500px;
+}
+
+div#logo {
+    display: block;
+    font-family: Helvetica;
+    font-size: 30px;
+    margin: 0 auto;
+    text-align: center;
+    width: 500px;
+}
+
+div#form {
+    border-bottom: 1px solid black;
+    border-top: 1px solid black;
+    display: block;
+    font-family: Helvetica;
+    font-size: 30px;
+    margin: 0 auto;
+    padding: 20px;
+    padding-right: 20px;
+    padding-top: 20px;
+    text-align: center;
+    width: 500px;
+}
+
+div#results {
+    display: block;
+    font-family: Helvetica;
+    font-size: 30px;
+    margin: 0 auto;
+    text-align: center;
+    width: 500px;
+}
+
+div#message {
+    display: block;
+    font-family: Helvetica;
+    font-size: 15px;
+    margin-top: 50px;
+    text-align: center;
+    width: 500px;
+}
+
+.button {
+    -webkit-transition-duration: 0.4s;
+    background-color: #4CAF50;
+    /* Green */
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    padding: 16px 32px;
+    text-align: center;
+    text-decoration: none;
+    /* Safari */
+    transition-duration: 0.4s;
+    width: 250px;
+}
+
+.button1 {
+    background-color: white;
+    border: 2px solid #008CBA;
+    color: black;
+}
+
+.button1:hover {
+    background-color: #008CBA;
+    color: white;
+}
+
+.button2 {
+    background-color: white;
+    border: 2px solid #555555;
+    color: black;
+}
+
+.button2:hover {
+    background-color: #555555;
+    color: white;
+}
+
+.button3 {
+    background-color: white;
+    border: 2px solid #f44336;
+    color: black;
+}
+
+.button3:hover {
+    background-color: #f44336;
+    color: white;
+}
+
+/*override toast notification styles*/
+
+.blazored-toast-body .blazored-toast-header h5 {
+    font-size: 20px;
+    font-weight: normal;
+    line-height: 0;
+    text-transform: capitalize;
+}
+
+.blazored-toast-body .blazored-toast-header .blazored-toast-close { font-size: 15px; }
+
+.blazored-toast { width: 300px; }

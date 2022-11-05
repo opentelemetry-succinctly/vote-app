@@ -1,0 +1,78 @@
+version: "3.9"
+name: vote-app
+services:
+  redis:
+    image: redis:6.2
+    container_name: redis
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - 6379:6379
+
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+  vote-ui:
+    image: vote-ui
+    container_name: vote-ui
+    depends_on:
+      - vote-data
+      - vote-processor
+      - redis
+      - rabbitmq
+    build:
+      context: .
+      dockerfile: vote-ui/Dockerfile
+    environment:
+      # Set EnableOTLPExporter to true if you want to send traces and metrics to the OTEL collector
+      EnableOTLPExporter: false
+      Queue__HostName: rabbitmq
+      ConnectionStrings__VoteDataServiceUrl: http://vote-data:80
+      ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
+      ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
+    ports:
+      - 8080:80
+
+  vote-data:
+    image: vote-data
+    container_name: vote-data
+    depends_on:
+        - redis
+    build:
+        context: .
+        dockerfile: vote-data/Dockerfile
+    environment:
+        ConnectionStrings__RedisHost: redis
+        EnableOTLPExporter: false
+        ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
+        ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
+    ports:
+        - 8081:80
+
+  vote-processor:
+    image: vote-processor
+    container_name: vote-processor
+    depends_on:
+        - redis
+        - rabbitmq
+    build:
+        context: .
+        dockerfile: vote-processor/Dockerfile
+    environment:
+        ConnectionStrings__RedisHost: redis
+        Queue__HostName: rabbitmq
+        EnableOTLPExporter: false
+        ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
+        ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
+
+  azure-vote-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: azure-vote-collector
+    ports:
+      - 4318:4318
+    profiles:
+      - local-collector
