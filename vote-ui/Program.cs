@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -95,7 +97,7 @@ builder.Services.AddSingleton<VoteService>();
 
 //builder.Services.AddSingleton(new Meter("my-corp.azure-vote.vote-app"));
 
-builder.Services.AddHttpClient<VoteDataClient>();
+builder.Services.AddHttpClient<VoteDataClient>(client => client.BaseAddress = new(builder.Configuration.GetConnectionString("VoteDataServiceUrl")));
 
 var app = builder.Build();
 
@@ -107,11 +109,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.MapBlazorHub();
-
 app.MapFallbackToPage("/_Host");
 
 app.MapGet("/traced-exception/", static (ActivitySource activitySource) =>
