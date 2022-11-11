@@ -107,7 +107,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 // Enable the /metrics endpoint which will be scraped by Prometheus
-//app.UseOpenTelemetryPrometheusScrapingEndpoint();
+app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 app.UseStaticFiles();
 app.UseRouting();

@@ -16,12 +16,14 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using StackExchange.Redis;
 
-IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
-
 // Hack: Give time to RabbitMQ container to start. Use a retry policy in production.
 Thread.Sleep(TimeSpan.FromSeconds(30));
 
-var propagator = Propagators.DefaultTextMapPropagator;
+IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
+
+// Redis connection
+var redisConnection = ConnectionMultiplexer.Connect(config.GetConnectionString("RedisHost"));
+var redis = redisConnection.GetDatabase();
 
 // Shared resources for OTEL metrics and tracing
 var resourceBuilder = ResourceBuilder.CreateDefault()
@@ -29,7 +31,8 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddTelemetrySdk()
     .AddAttributes(new Dictionary<string, object>
     {
-        ["host.name"] = Environment.MachineName, ["os.description"] = RuntimeInformation.OSDescription,
+        ["host.name"] = Environment.MachineName,
+        ["os.description"] = RuntimeInformation.OSDescription,
     });
 
 // Configure tracing
@@ -37,6 +40,7 @@ using var tracerProvider = Sdk.CreateTracerProviderBuilder()
     .SetResourceBuilder(resourceBuilder)
     // receive traces from our own custom sources
     .AddSource(GlobalData.SourceName)
+    .AddRedisInstrumentation(redisConnection, opt => opt.SetVerboseDatabaseStatements = true)
     // Ensures that all activities are recorded and sent to exporter
     .SetSampler(new AlwaysOnSampler())
     // send traces to Jaeger
@@ -61,15 +65,19 @@ using var loggerFactory = LoggerFactory.Create(builder =>
 
 var logger = loggerFactory.CreateLogger<Program>();
 
-var redisConnection = ConnectionMultiplexer.Connect(config.GetConnectionString("RedisHost"));
-var redis = redisConnection.GetDatabase();
+// Set up propagator to extract context from RabbitMq message
+var propagator = new TraceContextPropagator();
 
-var factory = new ConnectionFactory { HostName = config["Queue:HostName"], AutomaticRecoveryEnabled = true };
+var factory = new ConnectionFactory
+{
+    HostName = config["Queue:HostName"], 
+    AutomaticRecoveryEnabled = true
+};
 var connection = factory.CreateConnection();
 using var channel = connection.CreateModel();
 channel.QueueDeclare(config["Queue:Name"], autoDelete: false, exclusive: false);
-
 var consumer = new EventingBasicConsumer(channel);
+
 consumer.Received += async (_, eventArgs) =>
 {
     // Extract context from the propagator
@@ -89,6 +97,12 @@ consumer.Received += async (_, eventArgs) =>
         new SpanContext(parentContext.ActivityContext));
     // Copy baggage from the parent to the child span
     Baggage.Current = parentContext.Baggage;
+
+    // Set baggage content as attributes on the span
+    foreach (var (key, value) in Baggage.Current)
+    {
+        span.SetAttribute(key, value);
+    }
 
     // Process the message
     var body = eventArgs.Body.ToArray();

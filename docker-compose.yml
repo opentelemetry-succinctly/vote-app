@@ -1,5 +1,6 @@
 version: "3.9"
 name: vote-app
+
 services:
   redis:
     image: redis:6.2
@@ -30,10 +31,10 @@ services:
     environment:
       # Set EnableOTLPExporter to true if you want to send traces and metrics to the OTEL collector
       EnableOTLPExporter: false
-      Queue__HostName: rabbitmq
-      ConnectionStrings__VoteDataServiceUrl: http://vote-data:80
-      ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
-      ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
+      #Queue__HostName: rabbitmq
+      #ConnectionStrings__VoteDataServiceUrl: http://vote-data:80
+      #ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
+      #ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
     ports:
       - 8080:80
 
@@ -46,10 +47,10 @@ services:
         context: .
         dockerfile: vote-data/Dockerfile
     environment:
-        ConnectionStrings__RedisHost: redis
+        #ConnectionStrings__RedisHost: redis
         EnableOTLPExporter: false
-        ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
-        ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
+        #ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
+        #ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
     ports:
         - 8081:80
 
@@ -63,11 +64,11 @@ services:
         context: .
         dockerfile: vote-processor/Dockerfile
     environment:
-        ConnectionStrings__RedisHost: redis
-        Queue__HostName: rabbitmq
+        #ConnectionStrings__RedisHost: redis
+        #Queue__HostName: rabbitmq
         EnableOTLPExporter: false
-        ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
-        ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
+        #ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
+        #ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
 
   #otel-collector:
   #  image: otel/opentelemetry-collector:latest
