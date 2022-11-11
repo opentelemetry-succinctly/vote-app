@@ -1,10 +1,11 @@
-FROM mcr.microsoft.com/dotnet/aspnet:6.0-alpine AS base
+FROM mcr.microsoft.com/dotnet/aspnet:7.0-alpine AS base
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine AS build
 WORKDIR /src
 COPY ["vote-processor/vote-processor.csproj", "vote-processor/"]
 COPY ["../common/common.csproj", "common/"]
+COPY ["Directory.Build.props", "./"]
 RUN dotnet restore "vote-processor/vote-processor.csproj"
 COPY . .
 WORKDIR "/src/vote-processor"

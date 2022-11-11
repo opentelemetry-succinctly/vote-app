@@ -1,4 +1,20 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using Blazored.Toast;
+using Common;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using VoteUI;
+using VoteUI.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -6,98 +22,80 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddBlazoredToast();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<VoteService>();
+builder.Services.AddSingleton(new AppMetrics(GlobalData.SourceName, GlobalData.ApplicationVersion));
 
-// Configure OpenTelemetry tracing
-//builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
-//    {
-//        tracerProviderBuilder
-//            // Customize the traces gathered by the HTTP request handler
-//            .AddAspNetCoreInstrumentation(options =>
-//            {
-//                options.RecordException = true;
-//                // Add metadata for the request such as the HTTP method and response length
-//                options.Enrich = (activity, eventName, rawObject) =>
-//                {
-//                    switch (eventName)
-//                    {
-//                        case "OnStartActivity":
-//                        {
-//                            if (rawObject is not HttpRequest httpRequest)
-//                            {
-//                                return;
-//                            }
+// Shared resources for OTEL metrics and tracing
+var resourceBuilder = ResourceBuilder.CreateDefault()
+    .AddService(GlobalData.ApplicationName, serviceVersion: GlobalData.ApplicationVersion)
+    .AddTelemetrySdk()
+    .AddAttributes(new Dictionary<string, object>
+    {
+        ["host.name"] = Environment.MachineName,
+        ["os.description"] = RuntimeInformation.OSDescription,
+        ["deployment.environment"] = builder.Environment.EnvironmentName.ToLowerInvariant(),
+    });
 
-//                            activity.SetTag("requestProtocol", httpRequest.Protocol);
-//                            activity.SetTag("requestMethod", httpRequest.Method);
-//                            break;
-//                        }
-//                        case "OnStopActivity":
-//                        {
-//                            if (rawObject is HttpResponse httpResponse)
-//                            {
-//                                activity.SetTag("responseLength", httpResponse.ContentLength);
-//                            }
+// Configure logging
+builder.Logging.AddOpenTelemetry(loggerOptions =>
+{
+    loggerOptions.IncludeFormattedMessage = loggerOptions.IncludeScopes = true;
+    loggerOptions
+        // add rich tags to our logs
+        .SetResourceBuilder(resourceBuilder)
+        // send logs to OTLP endpoint
+        .AddOtlpExporter();
+});
 
-//                            break;
-//                        }
-//                    }
-//                };
-//            })
-//            // Instrument Redis client
-//            .AddRedisInstrumentation(redisConnection, opt =>
-//            {
-//                opt.FlushInterval = TimeSpan.FromSeconds(1);
-//                opt.SetVerboseDatabaseStatements = true;
-//            })
-//            .AddSource("my-corp.azure-vote.vote-app")
-//            // Create resources (key-value pairs) that describe your service such as service name and version
-//            .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("vote-app")
-//                .AddAttributes(new[] { new KeyValuePair<string, object>("service.version", "1.0.0.0") }))
-//            // Ensures that all activities are recorded and sent to exporter
-//            .SetSampler(new AlwaysOnSampler())
-//            // Displays traces on the console. Useful for debugging.
-//            .AddConsoleExporter();
-//        if (builder.Configuration.GetValue<bool>("EnableOtlpExporter"))
-//        {
-//            // Exports spans to an OTLP endpoint. Use this for exporting traces to collector or a backend that support OTLP over HTTP
-//            tracerProviderBuilder.AddOtlpExporter(otlpOptions =>
-//            {
-//                otlpOptions.Endpoint = new(builder.Configuration.GetConnectionString("OTLPTracesExporterEndpoint"));
-//                otlpOptions.Protocol = OtlpExportProtocol.HttpProtobuf;
-//            });
-//        }
-//    }
-//);
+// Configure tracing
+builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
+{
+    tracerProviderBuilder
+        // add rich tags to our traces
+        .SetResourceBuilder(resourceBuilder)
+        // receive traces from our own custom sources
+        .AddSource(GlobalData.SourceName)
+        // receive traces from built-in sources
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        // Ensures that all activities are recorded and sent to exporter
+        .SetSampler(new AlwaysOnSampler())
+        // send traces to Jaeger
+        .AddJaegerExporter();
+});
 
-//builder.Services.AddSingleton(new ActivitySource("my-corp.azure-vote.vote-app"));
+// Inject the tracer that we can use inside the application to write spans
+//builder.Services.AddSingleton(TracerProvider.Default.GetTracer($"vote-app.{serviceName}"));
 
-//// Configure OpenTelemetry metrics
-//builder.Services.AddOpenTelemetryMetrics(meterProviderBuilder =>
-//    {
-//        meterProviderBuilder.AddAspNetCoreInstrumentation()
-//            .AddMeter("my-corp.azure-vote.vote-app")
-//            // Create resources (key-value pairs) that describe your service such as service name and version
-//            .SetResourceBuilder(
-//                ResourceBuilder.CreateDefault().AddService("vote-app")
-//                    .AddAttributes(new[] { new KeyValuePair<string, object>("service.version", "1.0.0.0") }))
-//            // Displays metrics on the console. Useful for debugging.
-//            .AddConsoleExporter();
-//        if (builder.Configuration.GetValue<bool>("EnableOtlpExporter"))
-//        {
-//            // Exports metrics to an OTLP endpoint. Use this for exporting metrics to collector or a backend that support OTLP over HTTP
-//            meterProviderBuilder.AddOtlpExporter(otlpOptions =>
-//            {
-//                otlpOptions.Endpoint = new(builder.Configuration.GetConnectionString("OTLPMetricsExporterEndpoint"));
-//                otlpOptions.Protocol = OtlpExportProtocol.HttpProtobuf;
-//            });
-//        }
-//    }
-//);
+// Configure metrics
+builder.Services.AddOpenTelemetryMetrics(meterProviderBuilder =>
+{
+    meterProviderBuilder
+        // add rich tags to our metrics
+        .SetResourceBuilder(resourceBuilder)
+        // receive metrics from built-in sources
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        // receive metrics from custom sources
+        .AddMeter(GlobalData.SourceName)
+        // expose metrics in Prometheus exposition format
+        .AddPrometheusExporter();
 
-//builder.Services.AddSingleton(new Meter("my-corp.azure-vote.vote-app"));
+    if (builder.Configuration.GetValue<bool>("EnableOTLPExporter"))
+    {
+        // Sends metrics to an OTLP endpoint.
+        // Use this to
+        meterProviderBuilder.AddOtlpExporter(otlpOptions =>
+        {
+            otlpOptions.Endpoint = new(builder.Configuration.GetConnectionString("OTLPEndpoint")!);
+            otlpOptions.Protocol = OtlpExportProtocol.HttpProtobuf;
+        });
+    }
+});
 
-builder.Services.AddHttpClient<VoteDataClient>(client => client.BaseAddress = new(builder.Configuration.GetConnectionString("VoteDataServiceUrl")));
+builder.Services.AddHttpClient<VoteDataClient>(client =>
+    client.BaseAddress = new(builder.Configuration.GetConnectionString("VoteDataServiceUrl")!));
 
 var app = builder.Build();
 
@@ -108,18 +106,13 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+// Enable the /metrics endpoint which will be scraped by Prometheus
+//app.UseOpenTelemetryPrometheusScrapingEndpoint();
+
 app.UseStaticFiles();
 app.UseRouting();
-app.MapBlazorHub();
+app.MapBlazorHub(
+    options => options.WebSockets.CloseTimeout = options.LongPolling.PollTimeout = TimeSpan.FromMinutes(10));
 app.MapFallbackToPage("/_Host");
-
-app.MapGet("/traced-exception/", static (ActivitySource activitySource) =>
-    {
-        using var activity = activitySource.StartActivity("Error endpoint", ActivityKind.Server);
-        throw new ApplicationException("Error processing the request");
-    })
-    .WithName("TracedException")
-    .Produces<ApplicationException>()
-    .Produces(StatusCodes.Status500InternalServerError);
 
 app.Run();

@@ -1,11 +1,65 @@
-﻿IConfiguration config =
-    new ConfigurationBuilder()
-        .AddJsonFile("appsettings.json")
-        .AddEnvironmentVariables()
-        .Build();
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using Common;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using StackExchange.Redis;
 
-// Hack: Giving time to RabbitMQ to start. Use a retry policy in production.
+IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
+
+// Hack: Give time to RabbitMQ container to start. Use a retry policy in production.
 Thread.Sleep(TimeSpan.FromSeconds(30));
+
+var propagator = Propagators.DefaultTextMapPropagator;
+
+// Shared resources for OTEL metrics and tracing
+var resourceBuilder = ResourceBuilder.CreateDefault()
+    .AddService(GlobalData.ApplicationName, serviceVersion: GlobalData.ApplicationVersion)
+    .AddTelemetrySdk()
+    .AddAttributes(new Dictionary<string, object>
+    {
+        ["host.name"] = Environment.MachineName, ["os.description"] = RuntimeInformation.OSDescription,
+    });
+
+// Configure tracing
+using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+    .SetResourceBuilder(resourceBuilder)
+    // receive traces from our own custom sources
+    .AddSource(GlobalData.SourceName)
+    // Ensures that all activities are recorded and sent to exporter
+    .SetSampler(new AlwaysOnSampler())
+    // send traces to Jaeger
+    .AddJaegerExporter()
+    .Build();
+
+var tracer = TracerProvider.Default.GetTracer(GlobalData.SourceName, GlobalData.ApplicationVersion);
+
+// Configure logging
+using var loggerFactory = LoggerFactory.Create(builder =>
+{
+    builder.AddOpenTelemetry(loggerOptions =>
+    {
+        loggerOptions.IncludeFormattedMessage = loggerOptions.IncludeScopes = true;
+        loggerOptions
+            // add rich tags to our logs
+            .SetResourceBuilder(resourceBuilder)
+            // send logs to OTLP endpoint
+            .AddOtlpExporter();
+    });
+});
+
+var logger = loggerFactory.CreateLogger<Program>();
 
 var redisConnection = ConnectionMultiplexer.Connect(config.GetConnectionString("RedisHost"));
 var redis = redisConnection.GetDatabase();
@@ -18,21 +72,35 @@ channel.QueueDeclare(config["Queue:Name"], autoDelete: false, exclusive: false);
 var consumer = new EventingBasicConsumer(channel);
 consumer.Received += async (_, eventArgs) =>
 {
-    //using var activity = _activitySource.StartActivity(nameof(IncrementVoteAsync), ActivityKind.Server);
-    //activity?.AddEvent(new("Vote added"));
-    //activity?.SetTag(nameof(candidate), candidate);
+    // Extract context from the propagator
+    var parentContext = propagator.Extract(default, eventArgs.BasicProperties, (basicProps, key) =>
+    {
+        if (!basicProps.Headers.TryGetValue(key, out var value))
+        {
+            return Enumerable.Empty<string>();
+        }
 
+        var bytes = value as byte[];
+        return new[] { Encoding.UTF8.GetString(bytes ?? Array.Empty<byte>()) };
+    });
+
+    // Create child span from the extracted parent context
+    using var span = tracer.StartActiveSpan("RabbitMq receive", SpanKind.Consumer,
+        new SpanContext(parentContext.ActivityContext));
+    // Copy baggage from the parent to the child span
+    Baggage.Current = parentContext.Baggage;
+
+    // Process the message
     var body = eventArgs.Body.ToArray();
     var candidate = BitConverter.ToInt32(body);
     var currentValue = candidate switch
     {
         1 => await redis.StringIncrementAsync(CacheKeys.Vote1Key),
         2 => await redis.StringIncrementAsync(CacheKeys.Vote2Key),
-        _ => throw new ArgumentOutOfRangeException(nameof(candidate))
+        _ => throw new ArgumentOutOfRangeException(nameof(candidate)),
     };
 
-    // save currentvalue in meter
-    //_votesCounter.Add(1, tag: new("candidate", Vote1Key));
+    channel.BasicAck(eventArgs.DeliveryTag, false);
 };
 
 channel.BasicConsume(config["Queue:Name"], true, consumer);

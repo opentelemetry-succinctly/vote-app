@@ -1,3 +1,5 @@
+using System.Net.Http;
+
 namespace VoteUI;
 
-public record VoteDataClient;
+public record VoteDataClient(HttpClient Client);

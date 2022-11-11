@@ -2,7 +2,9 @@
 
 @inject VoteService VoteService
 @inject IToastService ToastService
-
+@using VoteUI.Data
+@using Common
+@using System.Threading
 @implements IDisposable
 
 <PageTitle>@Title</PageTitle>
@@ -35,8 +37,8 @@ else
 
 @code {
     private (Vote Vote1, Vote Vote2) _votes;
-    private const string Title = "Vote App";
-    private const int RefreshDuration = 10;
+        private const string Title = "Vote App";
+        private const int RefreshDuration = 10;
     private PeriodicTimer _timer = null!;
 
     protected override async Task OnInitializedAsync()
