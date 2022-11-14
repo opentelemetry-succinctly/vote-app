@@ -71,7 +71,7 @@ public class VoteService
         Baggage.SetBaggage("ClientHost", host);
 
         // Refer to RabbitMQ guide for best practices https://www.rabbitmq.com/dotnet-api-guide.html
-        var factory = new ConnectionFactory { HostName = _config["Queue:HostName"] };
+        var factory = new ConnectionFactory { HostName = _config["Queue:Host"] };
         using var connection = factory.CreateConnection();
         using var channel = connection.CreateModel();
         var props = channel.CreateBasicProperties();

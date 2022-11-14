@@ -8,7 +8,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -26,7 +25,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<VoteService>();
 builder.Services.AddSingleton(new AppMetrics(GlobalData.SourceName, GlobalData.ApplicationVersion));
 
-// Shared resources for OTEL metrics and tracing
+// Shared resources for OTEL signals
 var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddService(GlobalData.ApplicationName, serviceVersion: GlobalData.ApplicationVersion)
     .AddTelemetrySdk()
@@ -62,11 +61,18 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
         // Ensures that all activities are recorded and sent to exporter
         .SetSampler(new AlwaysOnSampler())
         // send traces to Jaeger
-        .AddJaegerExporter();
-});
+        .AddJaegerExporter(options => options.AgentHost = builder.Configuration["Hosts:Jaeger"]!);
 
-// Inject the tracer that we can use inside the application to write spans
-//builder.Services.AddSingleton(TracerProvider.Default.GetTracer($"vote-app.{serviceName}"));
+    if (builder.Configuration.GetValue<bool>("EnableOTLPExporter"))
+    {
+        // Sends metrics to an OTLP endpoint.
+        // Use this to send traces to the OTEL collector.
+        tracerProviderBuilder.AddOtlpExporter(otlpOptions =>
+        {
+            otlpOptions.Endpoint = GlobalData.GetOtlpTracesExporterEndpoint(builder.Configuration["Hosts:OTLP"]!);
+        });
+    }
+});
 
 // Configure metrics
 builder.Services.AddOpenTelemetryMetrics(meterProviderBuilder =>
@@ -85,17 +91,16 @@ builder.Services.AddOpenTelemetryMetrics(meterProviderBuilder =>
     if (builder.Configuration.GetValue<bool>("EnableOTLPExporter"))
     {
         // Sends metrics to an OTLP endpoint.
-        // Use this to
+        // Use this to send traces to the OTEL collector.
         meterProviderBuilder.AddOtlpExporter(otlpOptions =>
         {
-            otlpOptions.Endpoint = new(builder.Configuration.GetConnectionString("OTLPEndpoint")!);
-            otlpOptions.Protocol = OtlpExportProtocol.HttpProtobuf;
+            otlpOptions.Endpoint = GlobalData.GetOtlpMetricsExporterEndpoint(builder.Configuration["Hosts:OTLP"]!);
         });
     }
 });
 
 builder.Services.AddHttpClient<VoteDataClient>(client =>
-    client.BaseAddress = new(builder.Configuration.GetConnectionString("VoteDataServiceUrl")!));
+    client.BaseAddress = new($"http://{builder.Configuration["Hosts:VoteDataService"]!}:8081"));
 
 var app = builder.Build();
 
@@ -111,8 +116,7 @@ app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 app.UseStaticFiles();
 app.UseRouting();
-app.MapBlazorHub(
-    options => options.WebSockets.CloseTimeout = options.LongPolling.PollTimeout = TimeSpan.FromMinutes(10));
+app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 
 app.Run();

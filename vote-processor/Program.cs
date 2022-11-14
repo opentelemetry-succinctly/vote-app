@@ -22,10 +22,10 @@ Thread.Sleep(TimeSpan.FromSeconds(30));
 IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
 
 // Redis connection
-var redisConnection = ConnectionMultiplexer.Connect(config.GetConnectionString("RedisHost"));
+var redisConnection = ConnectionMultiplexer.Connect($"{config["Hosts:Redis"]}");
 var redis = redisConnection.GetDatabase();
 
-// Shared resources for OTEL metrics and tracing
+// Shared resources for OTEL signals
 var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddService(GlobalData.ApplicationName, serviceVersion: GlobalData.ApplicationVersion)
     .AddTelemetrySdk()
@@ -44,7 +44,7 @@ using var tracerProvider = Sdk.CreateTracerProviderBuilder()
     // Ensures that all activities are recorded and sent to exporter
     .SetSampler(new AlwaysOnSampler())
     // send traces to Jaeger
-    .AddJaegerExporter()
+    .AddJaegerExporter(options => options.AgentHost = config["Hosts:Jaeger"]!)
     .Build();
 
 var tracer = TracerProvider.Default.GetTracer(GlobalData.SourceName, GlobalData.ApplicationVersion);
@@ -70,7 +70,7 @@ var propagator = new TraceContextPropagator();
 
 var factory = new ConnectionFactory
 {
-    HostName = config["Queue:HostName"], 
+    HostName = config["Queue:Host"], 
     AutomaticRecoveryEnabled = true
 };
 var connection = factory.CreateConnection();

@@ -1,7 +1,32 @@
 version: "3.9"
 name: vote-app
-
 services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.39
+    container_name: jaeger
+    hostname: jaeger
+    ports:
+      - 16686:16686
+      - '6831:6831/udp'
+
+  prometheus:
+    image: prom/prometheus:v2.40.1
+    container_name: prometheus
+    volumes:
+      - ./config/prometheus/config.yml/:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - 9090:9090
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.64.1
+    container_name: otel-collector
+    ports:
+      - 4318:4318
+    profiles:
+      - local-collector
+
   redis:
     image: redis:6.2
     container_name: redis
@@ -31,12 +56,12 @@ services:
     environment:
       # Set EnableOTLPExporter to true if you want to send traces and metrics to the OTEL collector
       EnableOTLPExporter: false
-      #Queue__HostName: rabbitmq
-      #ConnectionStrings__VoteDataServiceUrl: http://vote-data:80
-      #ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
-      #ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
+      Queue__Host: rabbitmq
+      Hosts__VoteDataService: vote-data
+      Hosts__OTLP: otel-collector
+      Hosts__Jaeger: jaeger
     ports:
-      - 8080:80
+      - 8080:8080
 
   vote-data:
     image: vote-data
@@ -47,12 +72,12 @@ services:
         context: .
         dockerfile: vote-data/Dockerfile
     environment:
-        #ConnectionStrings__RedisHost: redis
+        Hosts__Redis: redis
         EnableOTLPExporter: false
-        #ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
-        #ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
+        Hosts__OTLP: otel-collector
+        Hosts__Jaeger: jaeger
     ports:
-        - 8081:80
+        - 8081:8081
 
   vote-processor:
     image: vote-processor
@@ -64,38 +89,8 @@ services:
         context: .
         dockerfile: vote-processor/Dockerfile
     environment:
-        #ConnectionStrings__RedisHost: redis
-        #Queue__HostName: rabbitmq
+        Hosts__Redis: redis
+        Queue__Host: rabbitmq
         EnableOTLPExporter: false
-        #ConnectionStrings__OTLPMetricsExporterEndpoint: http://azure-vote-collector:4318/v1/metrics
-        #ConnectionStrings__OTLPTracesExporterEndpoint: http://azure-vote-collector:4318/v1/traces
-
-  #otel-collector:
-  #  image: otel/opentelemetry-collector:latest
-  #  container_name: azure-vote-collector
-  #  ports:
-  #    - 4318:4318
-  #  profiles:
-  #    - local-collector
-
-  jaeger:
-    image: jaegertracing/all-in-one:1.39
-    container_name: jaeger
-    hostname: jaeger
-    restart: always
-    ports:
-      - '16686:16686'
-      - '6831:6831/udp'
-
-  #prometheus:
-  #  image: prom/prometheus:v2.29.2
-  #  container_name: prometheus
-  #  volumes:
-  #    - ./config/prometheus/config.yml/:/etc/prometheus/prometheus.yml
-  #  command:
-  #    - "--config.file=/etc/prometheus/prometheus.yml"
-  #    - "--enable-feature=exemplar-storage"
-  #  ports:
-  #    - 9090:9090
-  #  networks:
-  #    - cloud-native-observability
+        Hosts__OTLP: otel-collector
+        Hosts__Jaeger: jaeger

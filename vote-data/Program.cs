@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Common;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Logs;
@@ -15,7 +14,7 @@ using VoteData;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add Redis service
-var redisConnection = ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("RedisHost"));
+var redisConnection = ConnectionMultiplexer.Connect($"{builder.Configuration["Hosts:Redis"]}");
 builder.Services.AddSingleton<IConnectionMultiplexer>(redisConnection);
 
 builder.Services.AddSingleton<VoteDataService>();
@@ -23,7 +22,7 @@ builder.Services.AddSingleton<VoteDataService>();
 // Application settings
 builder.Services.Configure<VoteSettings>(builder.Configuration.GetSection(nameof(VoteSettings)));
 
-// Shared resources for OTEL metrics and tracing
+// Shared resources for OTEL signals
 var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddService(GlobalData.ApplicationName, serviceVersion: GlobalData.ApplicationVersion)
     .AddTelemetrySdk()
@@ -58,7 +57,7 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
         .AddHttpClientInstrumentation()
         .AddRedisInstrumentation(redisConnection, opt => opt.SetVerboseDatabaseStatements = true)
         // send traces to Jaeger
-        .AddJaegerExporter();
+        .AddJaegerExporter(options => options.AgentHost = builder.Configuration["Hosts:Jaeger"]!);
 });
 
 // Inject the tracer that we can use inside the application to write spans

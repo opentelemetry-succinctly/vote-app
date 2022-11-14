@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 
 namespace Common;
 
@@ -18,4 +19,8 @@ public static class GlobalData
     public static string ApplicationVersion { get; }
 
     public static string SourceName { get; }
+
+    public static Uri GetOtlpTracesExporterEndpoint(string otlpHost) => new($"http://{otlpHost}:4318/v1/traces");
+
+    public static Uri GetOtlpMetricsExporterEndpoint(string otlpHost) => new($"http://{otlpHost}:4318/v1/metrics");
 }
