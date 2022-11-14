@@ -16,13 +16,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.4.0-beta.3" />
-		<PackageReference Include="OpenTelemetry.Exporter.Jaeger" Version="1.4.0-beta.3" />
-		<PackageReference Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.0.0-rc9.7" />
 		<PackageReference Include="RabbitMQ.Client" Version="6.4.0" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="7.0.0" />
-		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol.Logs" Version="1.4.0-beta.3" />
+		<PackageReference Include="StackExchange.Redis" Version="2.6.70" />
 	</ItemGroup>
 
 	<ItemGroup>

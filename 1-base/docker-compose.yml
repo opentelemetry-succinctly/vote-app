@@ -1,35 +1,9 @@
 version: "3.9"
-name: vote-app
+name: vote-app-base
 services:
-  jaeger:
-    image: jaegertracing/all-in-one:1.39
-    container_name: jaeger
-    hostname: jaeger
-    ports:
-      - 16686:16686
-      - '6831:6831/udp'
-
-  prometheus:
-    image: prom/prometheus:v2.40.1
-    container_name: prometheus
-    volumes:
-      - ./config/prometheus/config.yml/:/etc/prometheus/prometheus.yml
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-    ports:
-      - 9090:9090
-
-  otel-collector:
-    image: otel/opentelemetry-collector:0.64.1
-    container_name: otel-collector
-    ports:
-      - 4318:4318
-    profiles:
-      - local-collector
-
   redis:
     image: redis:6.2
-    container_name: redis
+    container_name: redis-base
     environment:
       ALLOW_EMPTY_PASSWORD: "yes"
     ports:
@@ -37,14 +11,14 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.9-management
-    container_name: rabbitmq
+    container_name: rabbitmq-base
     ports:
       - 5672:5672
       - 15672:15672
 
   vote-ui:
-    image: vote-ui
-    container_name: vote-ui
+    image: vote-ui-base
+    container_name: vote-ui-base
     depends_on:
       - vote-data
       - vote-processor
@@ -54,18 +28,14 @@ services:
       context: .
       dockerfile: vote-ui/Dockerfile
     environment:
-      # Set EnableOTLPExporter to true if you want to send traces and metrics to the OTEL collector
-      EnableOTLPExporter: false
       Queue__Host: rabbitmq
       Hosts__VoteDataService: vote-data
-      Hosts__OTLP: otel-collector
-      Hosts__Jaeger: jaeger
     ports:
       - 8080:8080
 
   vote-data:
     image: vote-data
-    container_name: vote-data
+    container_name: vote-data-base
     depends_on:
         - redis
     build:
@@ -73,15 +43,12 @@ services:
         dockerfile: vote-data/Dockerfile
     environment:
         Hosts__Redis: redis
-        EnableOTLPExporter: false
-        Hosts__OTLP: otel-collector
-        Hosts__Jaeger: jaeger
     ports:
         - 8081:8081
 
   vote-processor:
     image: vote-processor
-    container_name: vote-processor
+    container_name: vote-processor-base
     depends_on:
         - redis
         - rabbitmq
@@ -91,6 +58,3 @@ services:
     environment:
         Hosts__Redis: redis
         Queue__Host: rabbitmq
-        EnableOTLPExporter: false
-        Hosts__OTLP: otel-collector
-        Hosts__Jaeger: jaeger
