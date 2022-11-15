@@ -7,7 +7,7 @@ using RabbitMQ.Client.Events;
 using StackExchange.Redis;
 
 // Hack: Give time to RabbitMQ container to start. Use a retry policy in production.
-Thread.Sleep(TimeSpan.FromSeconds(30));
+Thread.Sleep(TimeSpan.FromSeconds(15));
 
 IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
 

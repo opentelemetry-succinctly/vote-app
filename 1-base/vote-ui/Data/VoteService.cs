@@ -33,9 +33,8 @@ public class VoteService
         var factory = new ConnectionFactory { HostName = _config["Queue:Host"] };
         using var connection = factory.CreateConnection();
         using var channel = connection.CreateModel();
-        var props = channel.CreateBasicProperties();
         channel.QueueDeclare(_config["Queue:Name"], autoDelete: false, exclusive: false);
-        channel.BasicPublish(string.Empty, "votes", body: BitConverter.GetBytes(candidate), basicProperties: props);
+        channel.BasicPublish(string.Empty, "votes", body: BitConverter.GetBytes(candidate));
     }
 
     public async Task ResetVotesAsync()
