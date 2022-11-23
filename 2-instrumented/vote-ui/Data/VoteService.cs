@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Trace;
@@ -17,6 +18,7 @@ public class VoteService
 {
     private static readonly TextMapPropagator Propagator = Propagators.DefaultTextMapPropagator;
     private readonly AppMetrics _appMetrics;
+    private readonly ILogger<VoteService> _logger;
     private readonly IConfiguration _config;
     private readonly IHttpContextAccessor _contextAccessor;
     private readonly Tracer _tracer;
@@ -27,13 +29,15 @@ public class VoteService
         TracerProvider provider,
         IConfiguration config,
         IHttpContextAccessor contextAccessor,
-        AppMetrics appMetrics)
+        AppMetrics appMetrics,
+        ILogger<VoteService> logger)
     {
         _voteDataClient = voteDataClient;
         _tracer = provider.GetTracer(GlobalData.SourceName);
         _config = config;
         _contextAccessor = contextAccessor;
         _appMetrics = appMetrics;
+        _logger = logger;
     }
 
     public async Task<(Vote vote1, Vote vote2)> GetVotesAsync()
@@ -50,6 +54,7 @@ public class VoteService
 
     public void IncrementVote(int candidate)
     {
+        _logger.LogInformation("Received vote for candidate {candidate}", candidate);
         var tags = new TagList
         {
             { "user-agent", _contextAccessor.HttpContext?.Request.Headers.UserAgent },
@@ -84,6 +89,7 @@ public class VoteService
 
         channel.QueueDeclare(_config["Queue:Name"], autoDelete: false, exclusive: false);
         channel.BasicPublish(string.Empty, "votes", body: BitConverter.GetBytes(candidate), basicProperties: props);
+        _logger.LogInformation("Published message on queue for candidate {candidate}", candidate);
     }
 
     public async Task ResetVotesAsync()

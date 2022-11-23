@@ -31,8 +31,8 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddTelemetrySdk()
     .AddAttributes(new Dictionary<string, object>
     {
-        ["host.name"] = Environment.MachineName,
-        ["os.description"] = RuntimeInformation.OSDescription,
+        [ResourceSemanticConventions.AttributeHostName] = Environment.MachineName,
+        [ResourceSemanticConventions.AttributeOsDescription] = RuntimeInformation.OSDescription,
     });
 
 // Configure tracing

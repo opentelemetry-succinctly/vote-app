@@ -31,9 +31,10 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddTelemetrySdk()
     .AddAttributes(new Dictionary<string, object>
     {
-        ["host.name"] = Environment.MachineName,
-        ["os.description"] = RuntimeInformation.OSDescription,
-        ["deployment.environment"] = builder.Environment.EnvironmentName.ToLowerInvariant(),
+        
+        [ResourceSemanticConventions.AttributeHostName] = Environment.MachineName,
+        [ResourceSemanticConventions.AttributeOsDescription] = RuntimeInformation.OSDescription,
+        [ResourceSemanticConventions.AttributeDeploymentEnvironment] = builder.Environment.EnvironmentName.ToLowerInvariant(),
     });
 
 // Configure logging
@@ -44,7 +45,7 @@ builder.Logging.AddOpenTelemetry(loggerOptions =>
         // add rich tags to our logs
         .SetResourceBuilder(resourceBuilder)
         // send logs to OTLP endpoint
-        .AddOtlpExporter();
+        .AddConsoleExporter();
 });
 
 // Configure tracing
@@ -110,6 +111,9 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
+
+// Add environment information to logs
+app.UseMiddleware<LogEnrichmentMiddleware>();
 
 // Enable the /metrics endpoint which will be scraped by Prometheus
 app.UseOpenTelemetryPrometheusScrapingEndpoint();

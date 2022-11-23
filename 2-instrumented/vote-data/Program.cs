@@ -28,9 +28,10 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddTelemetrySdk()
     .AddAttributes(new Dictionary<string, object>
     {
-        ["host.name"] = Environment.MachineName,
-        ["os.description"] = RuntimeInformation.OSDescription,
-        ["deployment.environment"] = builder.Environment.EnvironmentName.ToLowerInvariant(),
+        [ResourceSemanticConventions.AttributeHostName] = Environment.MachineName,
+        [ResourceSemanticConventions.AttributeOsDescription] = RuntimeInformation.OSDescription,
+        [ResourceSemanticConventions.AttributeDeploymentEnvironment] =
+            builder.Environment.EnvironmentName.ToLowerInvariant(),
     });
 
 // Configure logging
