@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -15,9 +16,6 @@ using OpenTelemetry.Trace;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using StackExchange.Redis;
-
-// Hack: Give time to RabbitMQ container to start. Use a retry policy in production.
-Thread.Sleep(TimeSpan.FromSeconds(30));
 
 IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
 
@@ -111,10 +109,8 @@ consumer.Received += async (_, eventArgs) =>
     {
         1 => await redis.StringIncrementAsync(CacheKeys.Vote1Key),
         2 => await redis.StringIncrementAsync(CacheKeys.Vote2Key),
-        _ => throw new ArgumentOutOfRangeException(nameof(candidate)),
+        _ => throw new UnreachableException(),
     };
-
-    channel.BasicAck(eventArgs.DeliveryTag, false);
 };
 
 channel.BasicConsume(config["Queue:Name"], true, consumer);

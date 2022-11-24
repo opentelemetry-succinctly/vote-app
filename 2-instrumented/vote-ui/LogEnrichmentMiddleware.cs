@@ -25,7 +25,7 @@ public class LogEnrichmentMiddleware
         {
             new("ProcessID", Environment.ProcessId), 
             new("DotnetFramework", RuntimeInformation.FrameworkDescription),
-            new("SessionID", httpContext.Session.Id),
+            new("Runtime", RuntimeInformation.RuntimeIdentifier),
         });
         using var _ = _logger.BeginScope(logState);
         await _next(httpContext);

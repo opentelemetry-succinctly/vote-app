@@ -1,13 +1,11 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using Common;
 using Microsoft.Extensions.Configuration;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using StackExchange.Redis;
-
-// Hack: Give time to RabbitMQ container to start. Use a retry policy in production.
-Thread.Sleep(TimeSpan.FromSeconds(15));
 
 IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
 
@@ -30,10 +28,8 @@ consumer.Received += async (_, eventArgs) =>
     {
         1 => await redis.StringIncrementAsync(CacheKeys.Vote1Key),
         2 => await redis.StringIncrementAsync(CacheKeys.Vote2Key),
-        _ => throw new ArgumentOutOfRangeException(nameof(candidate)),
+        _ => throw new UnreachableException(),
     };
-
-    channel.BasicAck(eventArgs.DeliveryTag, false);
 };
 
 channel.BasicConsume(config["Queue:Name"], true, consumer);

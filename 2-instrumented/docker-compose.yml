@@ -7,7 +7,7 @@ services:
     hostname: jaeger
     ports:
       - 16686:16686
-      - '6831:6831/udp'
+      - "6831:6831/udp"
 
   prometheus:
     image: prom/prometheus:v2.40.1
@@ -41,6 +41,11 @@ services:
     ports:
       - 5672:5672
       - 15672:15672
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 3
 
   vote-ui:
     image: vote-ui
@@ -67,30 +72,32 @@ services:
     image: vote-data
     container_name: vote-data
     depends_on:
-        - redis
+      - redis
     build:
-        context: .
-        dockerfile: vote-data/Dockerfile
+      context: .
+      dockerfile: vote-data/Dockerfile
     environment:
-        Hosts__Redis: redis
-        EnableOTLPExporter: false
-        Hosts__OTLP: otel-collector
-        Hosts__Jaeger: jaeger
+      Hosts__Redis: redis
+      EnableOTLPExporter: false
+      Hosts__OTLP: otel-collector
+      Hosts__Jaeger: jaeger
     ports:
-        - 8081:8081
+      - 8081:8081
 
   vote-processor:
     image: vote-processor
     container_name: vote-processor
     depends_on:
-        - redis
-        - rabbitmq
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     build:
-        context: .
-        dockerfile: vote-processor/Dockerfile
+      context: .
+      dockerfile: vote-processor/Dockerfile
     environment:
-        Hosts__Redis: redis
-        Queue__Host: rabbitmq
-        EnableOTLPExporter: false
-        Hosts__OTLP: otel-collector
-        Hosts__Jaeger: jaeger
+      Hosts__Redis: redis
+      Queue__Host: rabbitmq
+      EnableOTLPExporter: false
+      Hosts__OTLP: otel-collector
+      Hosts__Jaeger: jaeger

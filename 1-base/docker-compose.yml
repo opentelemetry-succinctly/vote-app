@@ -3,7 +3,7 @@ name: vote-app-base
 services:
   redis:
     image: redis:6.2
-    container_name: redis-base
+    container_name: redis
     environment:
       ALLOW_EMPTY_PASSWORD: "yes"
     ports:
@@ -11,14 +11,19 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.9-management
-    container_name: rabbitmq-base
+    container_name: rabbitmq
     ports:
       - 5672:5672
       - 15672:15672
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 3
 
   vote-ui:
-    image: vote-ui-base
-    container_name: vote-ui-base
+    image: vote-ui
+    container_name: vote-ui
     depends_on:
       - vote-data
       - vote-processor
@@ -26,35 +31,48 @@ services:
       - rabbitmq
     build:
       context: .
-      dockerfile: vote-ui/Dockerfile
+      #dockerfile: vote-ui/Dockerfile
+      dockerfile: vote-ui/Dockerfile.ai
     environment:
       Queue__Host: rabbitmq
       Hosts__VoteDataService: vote-data
+      OTEL_TRACES_EXPORTER: jaeger
+      OTEL_EXPORTER_JAEGER_AGENT_HOST: jaeger
     ports:
       - 8080:8080
 
   vote-data:
     image: vote-data
-    container_name: vote-data-base
+    container_name: vote-data
     depends_on:
-        - redis
+      - redis
     build:
-        context: .
-        dockerfile: vote-data/Dockerfile
+      context: .
+      dockerfile: vote-data/Dockerfile
     environment:
-        Hosts__Redis: redis
+      Hosts__Redis: redis
     ports:
-        - 8081:8081
+      - 8081:8081
 
   vote-processor:
     image: vote-processor
-    container_name: vote-processor-base
+    container_name: vote-processor
     depends_on:
-        - redis
-        - rabbitmq
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     build:
-        context: .
-        dockerfile: vote-processor/Dockerfile
+      context: .
+      dockerfile: vote-processor/Dockerfile
     environment:
-        Hosts__Redis: redis
-        Queue__Host: rabbitmq
+      Hosts__Redis: redis
+      Queue__Host: rabbitmq
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.39
+    container_name: jaeger
+    hostname: jaeger
+    ports:
+      - 16686:16686
+      - "6831:6831/udp"
