@@ -48,9 +48,12 @@ services:
       - redis
     build:
       context: .
-      dockerfile: vote-data/Dockerfile
+      #dockerfile: vote-data/Dockerfile
+      dockerfile: vote-data/Dockerfile.ai
     environment:
       Hosts__Redis: redis
+      OTEL_TRACES_EXPORTER: jaeger
+      OTEL_EXPORTER_JAEGER_AGENT_HOST: jaeger
     ports:
       - 8081:8081
 
@@ -64,10 +67,13 @@ services:
         condition: service_healthy
     build:
       context: .
-      dockerfile: vote-processor/Dockerfile
+      #dockerfile: vote-processor/Dockerfile
+      dockerfile: vote-processor/Dockerfile.ai
     environment:
       Hosts__Redis: redis
       Queue__Host: rabbitmq
+      OTEL_TRACES_EXPORTER: jaeger
+      OTEL_EXPORTER_JAEGER_AGENT_HOST: jaeger
 
   jaeger:
     image: jaegertracing/all-in-one:1.39
