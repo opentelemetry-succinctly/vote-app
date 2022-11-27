@@ -1,4 +1,3 @@
-version: "3.9"
 name: vote-app
 services:
   jaeger:
@@ -46,6 +45,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 3
+      start_period: 10s
 
   vote-ui:
     image: vote-ui
@@ -59,7 +59,7 @@ services:
       context: .
       dockerfile: vote-ui/Dockerfile
     environment:
-      # Set EnableOTLPExporter to true if you want to send traces and metrics to the OTEL collector
+      # Set EnableOTLPExporter to true to send traces and metrics to the OTEL collector
       EnableOTLPExporter: false
       Queue__Host: rabbitmq
       Hosts__VoteDataService: vote-data

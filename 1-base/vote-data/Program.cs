@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 using VoteData;
@@ -17,7 +18,8 @@ builder.Services.Configure<VoteSettings>(builder.Configuration.GetSection(nameof
 var app = builder.Build();
 
 // API Endpoints
-app.MapGet("/vote", static async (VoteDataService vds) => await vds.GetVotesAsync());
-app.MapPost("/vote/reset", static async (VoteDataService vds) => await vds.ResetVotesAsync());
+var apiGroup = app.MapGroup("/vote").WithDescription("Vote Data API");
+apiGroup.MapGet("/", static async (VoteDataService vds) => await vds.GetVotesAsync());
+apiGroup.MapPost("/reset", static async (VoteDataService vds) => await vds.ResetVotesAsync());
 
 app.Run();

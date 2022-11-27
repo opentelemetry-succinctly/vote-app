@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Common;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Logs;
@@ -67,7 +68,8 @@ builder.Services.AddSingleton(TracerProvider.Default.GetTracer(GlobalData.Source
 var app = builder.Build();
 
 // API Endpoints
-app.MapGet("/vote", static async (VoteDataService vds) => await vds.GetVotesAsync());
-app.MapPost("/vote/reset", static async (VoteDataService vds) => await vds.ResetVotesAsync());
+var apiGroup = app.MapGroup("/vote").WithDescription("Vote Data API");
+apiGroup.MapGet("/", static async (VoteDataService vds) => await vds.GetVotesAsync());
+apiGroup.MapPost("/reset", static async (VoteDataService vds) => await vds.ResetVotesAsync());
 
 app.Run();
