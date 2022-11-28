@@ -31,8 +31,8 @@ services:
       - rabbitmq
     build:
       context: .
-      #dockerfile: vote-ui/Dockerfile
-      dockerfile: vote-ui/Dockerfile.ai
+      dockerfile: vote-ui/Dockerfile
+      #dockerfile: vote-ui/Dockerfile.ai
     environment:
       Queue__Host: rabbitmq
       Hosts__VoteDataService: vote-data
@@ -48,8 +48,8 @@ services:
       - redis
     build:
       context: .
-      #dockerfile: vote-data/Dockerfile
-      dockerfile: vote-data/Dockerfile.ai
+      dockerfile: vote-data/Dockerfile
+      #dockerfile: vote-data/Dockerfile.ai
     environment:
       Hosts__Redis: redis
       OTEL_TRACES_EXPORTER: jaeger
