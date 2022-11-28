@@ -11,14 +11,12 @@ namespace VoteUI.Data;
 public class VoteService
 {
     private readonly IConfiguration _config;
-    private readonly IHttpContextAccessor _contextAccessor;
     private readonly VoteDataClient _voteDataClient;
 
-    public VoteService(VoteDataClient voteDataClient, IConfiguration config, IHttpContextAccessor contextAccessor)
+    public VoteService(VoteDataClient voteDataClient, IConfiguration config)
     {
         _voteDataClient = voteDataClient;
         _config = config;
-        _contextAccessor = contextAccessor;
     }
 
     public async Task<(Vote vote1, Vote vote2)> GetVotesAsync()
