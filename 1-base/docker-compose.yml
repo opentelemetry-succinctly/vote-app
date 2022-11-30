@@ -1,3 +1,5 @@
+# Note: Uncomment the commented code and use the *.ai Dockerfiles to
+# auto-instrument the applications and send the traces to the Jaeger service
 name: vote-app-base
 services:
   redis:
@@ -36,8 +38,8 @@ services:
     environment:
       Queue__Host: rabbitmq
       Hosts__VoteDataService: vote-data
-      OTEL_TRACES_EXPORTER: jaeger
-      OTEL_EXPORTER_JAEGER_AGENT_HOST: jaeger
+      #OTEL_TRACES_EXPORTER: jaeger
+      #OTEL_EXPORTER_JAEGER_AGENT_HOST: jaeger
     ports:
       - 8080:8080
 
@@ -52,8 +54,8 @@ services:
       #dockerfile: vote-data/Dockerfile.ai
     environment:
       Hosts__Redis: redis
-      OTEL_TRACES_EXPORTER: jaeger
-      OTEL_EXPORTER_JAEGER_AGENT_HOST: jaeger
+      #OTEL_TRACES_EXPORTER: jaeger
+      #OTEL_EXPORTER_JAEGER_AGENT_HOST: jaeger
     ports:
       - 8081:8081
 
@@ -73,10 +75,10 @@ services:
       Hosts__Redis: redis
       Queue__Host: rabbitmq
 
-  jaeger:
-    image: jaegertracing/all-in-one:1.39
-    container_name: jaeger
-    hostname: jaeger
-    ports:
-      - 16686:16686
-      - "6831:6831/udp"
+  #jaeger:
+  #  image: jaegertracing/all-in-one:1.39
+  #  container_name: jaeger
+  #  hostname: jaeger
+  #  ports:
+  #    - 16686:16686
+  #    - "6831:6831/udp"
