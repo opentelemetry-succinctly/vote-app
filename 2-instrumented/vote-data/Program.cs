@@ -4,8 +4,11 @@ using System.Runtime.InteropServices;
 using Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Exporter;
+using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -40,7 +43,7 @@ builder.Logging.AddOpenTelemetry(loggerOptions =>
 {
     loggerOptions.IncludeFormattedMessage = loggerOptions.IncludeScopes = true;
     loggerOptions
-        // add rich tags to our logs
+        // define the resource
         .SetResourceBuilder(resourceBuilder)
         // send logs to OTLP endpoint
         .AddOtlpExporter();
@@ -50,16 +53,26 @@ builder.Logging.AddOpenTelemetry(loggerOptions =>
 builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
-        // add rich tags to our traces
+        // define the resource
         .SetResourceBuilder(resourceBuilder)
         // receive traces from our own custom sources
         .AddSource(GlobalData.SourceName)
         // receive traces from built-in sources
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
-        .AddRedisInstrumentation(redisConnection, opt => opt.SetVerboseDatabaseStatements = true)
-        // send traces to Jaeger
-        .AddJaegerExporter(options => options.AgentHost = builder.Configuration["Hosts:Jaeger"]!);
+        // ensures that all spans are recorded and sent to exporter
+        .SetSampler(new AlwaysOnSampler())
+        // stream traces to the SpanExporter
+        .AddProcessor(new SimpleActivityExportProcessor(
+            // Select between Jaeger or OTLP SpanExporter
+            builder.Configuration.GetValue<bool>("EnableOTLPExporter")
+                // Sends metrics to an OTLP endpoint.
+                // Use this to send traces to the OTEL collector.
+                ? new OtlpTraceExporter(new()
+                {
+                    Endpoint = GlobalData.GetOtlpTracesExporterEndpoint(builder.Configuration["Hosts:OTLP"]!),
+                })
+                : new JaegerExporter(new() { AgentHost = builder.Configuration["Hosts:Jaeger"] })));
 });
 
 // Inject the tracer that we can use inside the application to write spans

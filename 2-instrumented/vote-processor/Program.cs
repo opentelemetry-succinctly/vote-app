@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -39,10 +40,19 @@ using var tracerProvider = Sdk.CreateTracerProviderBuilder()
     // receive traces from our own custom sources
     .AddSource(GlobalData.SourceName)
     .AddRedisInstrumentation(redisConnection, opt => opt.SetVerboseDatabaseStatements = true)
-    // Ensures that all activities are recorded and sent to exporter
+    // ensures that all spans are recorded and sent to exporter
     .SetSampler(new AlwaysOnSampler())
-    // send traces to Jaeger
-    .AddJaegerExporter(options => options.AgentHost = config["Hosts:Jaeger"]!)
+    // stream traces to the SpanExporter
+    .AddProcessor(new SimpleActivityExportProcessor(
+        // Select between Jaeger or OTLP SpanExporter
+        config.GetValue<bool>("EnableOTLPExporter")
+            // Sends metrics to an OTLP endpoint.
+            // Use this to send traces to the OTEL collector.
+            ? new OtlpTraceExporter(new()
+            {
+                Endpoint = GlobalData.GetOtlpTracesExporterEndpoint(config["Hosts:OTLP"]!),
+            })
+            : new JaegerExporter(new() { AgentHost = config["Hosts:Jaeger"] })))
     .Build();
 
 var tracer = TracerProvider.Default.GetTracer(GlobalData.SourceName, GlobalData.ApplicationVersion);

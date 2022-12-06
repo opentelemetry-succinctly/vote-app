@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -27,14 +29,17 @@ builder.Services.AddSingleton(new AppMetrics(GlobalData.SourceName, GlobalData.A
 
 // Shared resources for OTEL signals
 var resourceBuilder = ResourceBuilder.CreateDefault()
+    // add attributes for the name and version of the service
     .AddService(GlobalData.ApplicationName, serviceVersion: GlobalData.ApplicationVersion)
+    // add attributes for the OpenTelemetry SDK version
     .AddTelemetrySdk()
+    // add custom attributes
     .AddAttributes(new Dictionary<string, object>
     {
-
         [ResourceSemanticConventions.AttributeHostName] = Environment.MachineName,
         [ResourceSemanticConventions.AttributeOsDescription] = RuntimeInformation.OSDescription,
-        [ResourceSemanticConventions.AttributeDeploymentEnvironment] = builder.Environment.EnvironmentName.ToLowerInvariant(),
+        [ResourceSemanticConventions.AttributeDeploymentEnvironment] =
+            builder.Environment.EnvironmentName.ToLowerInvariant(),
     });
 
 // Configure logging
@@ -42,7 +47,7 @@ builder.Logging.AddOpenTelemetry(loggerOptions =>
 {
     loggerOptions.IncludeFormattedMessage = loggerOptions.IncludeScopes = true;
     loggerOptions
-        // add rich tags to our logs
+        // define the resource
         .SetResourceBuilder(resourceBuilder)
         // send logs to OTLP endpoint
         .AddConsoleExporter();
@@ -52,27 +57,26 @@ builder.Logging.AddOpenTelemetry(loggerOptions =>
 builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
-        // add rich tags to our traces
+        // define the resource
         .SetResourceBuilder(resourceBuilder)
         // receive traces from our own custom sources
         .AddSource(GlobalData.SourceName)
         // receive traces from built-in sources
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
-        // Ensures that all activities are recorded and sent to exporter
+        // ensures that all spans are recorded and sent to exporter
         .SetSampler(new AlwaysOnSampler())
-        // send traces to Jaeger
-        .AddJaegerExporter(options => options.AgentHost = builder.Configuration["Hosts:Jaeger"]!);
-
-    if (builder.Configuration.GetValue<bool>("EnableOTLPExporter"))
-    {
-        // Sends metrics to an OTLP endpoint.
-        // Use this to send traces to the OTEL collector.
-        tracerProviderBuilder.AddOtlpExporter(otlpOptions =>
-        {
-            otlpOptions.Endpoint = GlobalData.GetOtlpTracesExporterEndpoint(builder.Configuration["Hosts:OTLP"]!);
-        });
-    }
+        // stream traces to the SpanExporter
+        .AddProcessor(new SimpleActivityExportProcessor(
+            // Select between Jaeger or OTLP SpanExporter
+            builder.Configuration.GetValue<bool>("EnableOTLPExporter")
+                // Sends metrics to an OTLP endpoint.
+                // Use this to send traces to the OTEL collector.
+                ? new OtlpTraceExporter(new()
+                {
+                    Endpoint = GlobalData.GetOtlpTracesExporterEndpoint(builder.Configuration["Hosts:OTLP"]!),
+                })
+                : new JaegerExporter(new() { AgentHost = builder.Configuration["Hosts:Jaeger"] })));
 });
 
 // Configure metrics
