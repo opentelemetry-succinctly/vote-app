@@ -44,6 +44,7 @@ public class VoteService
     {
         var userAgent = _contextAccessor.HttpContext?.Request.Headers.UserAgent;
         using var span = _tracer.StartActiveSpan("Get votes request", SpanKind.Client);
+        // Write custom events to the span
         span.AddEvent($"Received get votes request from {userAgent}");
         // Send user defined properties to the Vote Data service as baggage
         Baggage.SetBaggage("ClientUserAgent", userAgent);
@@ -97,8 +98,6 @@ public class VoteService
         var userAgent = _contextAccessor.HttpContext?.Request.Headers.UserAgent;
         using var span = _tracer.StartActiveSpan("Reset votes request", SpanKind.Client);
         span.AddEvent($"Received reset request from {userAgent}");
-        // Send user defined properties to the Vote Data service as baggage
-        Baggage.SetBaggage("ClientUserAgent", userAgent);
         // Send user defined properties to the Vote Data service as baggage
         Baggage.SetBaggage("ClientUserAgent", userAgent);
         await _voteDataClient.Client.PostAsync("/vote/reset", null);

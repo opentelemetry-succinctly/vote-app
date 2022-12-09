@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Extensions.Docker.Resources;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -58,6 +59,7 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
         // define the resource
+        //.AddDetector(new DockerResourceDetector())
         .SetResourceBuilder(resourceBuilder)
         // receive traces from our own custom sources
         .AddSource(GlobalData.SourceName)
