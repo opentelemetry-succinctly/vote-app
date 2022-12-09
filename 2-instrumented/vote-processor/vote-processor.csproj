@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
 		<RootNamespace>VoteProcessor</RootNamespace>
-		<PublishAot>true</PublishAot>
+		<PublishAot>false</PublishAot>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -12,7 +12,7 @@
 
 	<ItemGroup>
 		<Content Include="appsettings.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
 
