@@ -74,7 +74,7 @@ using var loggerFactory = LoggerFactory.Create(builder =>
 var logger = loggerFactory.CreateLogger<Program>();
 
 // Set up propagator to extract context from RabbitMq message
-var propagator = new TraceContextPropagator();
+var propagator = Propagators.DefaultTextMapPropagator;
 
 var factory = new ConnectionFactory
 {
