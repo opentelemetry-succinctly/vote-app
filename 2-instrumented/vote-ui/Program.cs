@@ -55,7 +55,7 @@ builder.Logging.AddOpenTelemetry(loggerOptions =>
 });
 
 // Configure tracing
-builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
+builder.Services.AddOpenTelemetry().WithTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
         // define the resource
@@ -82,7 +82,7 @@ builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 });
 
 // Configure metrics
-builder.Services.AddOpenTelemetryMetrics(meterProviderBuilder =>
+builder.Services.AddOpenTelemetry().WithMetrics(meterProviderBuilder =>
 {
     meterProviderBuilder
         // add rich tags to our metrics
