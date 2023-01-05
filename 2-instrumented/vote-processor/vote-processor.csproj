@@ -19,6 +19,7 @@
 	<ItemGroup>
 		<PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.4.0-rc.1" />
 		<PackageReference Include="OpenTelemetry.Exporter.Jaeger" Version="1.4.0-rc.1" />
+		<PackageReference Include="OpenTelemetry.Extensions.Docker" Version="1.0.0-beta.1" />
 		<PackageReference Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.0.0-rc9.7" />
 		<PackageReference Include="OpenTelemetry.SemanticConventions" Version="1.0.0-rc9.9" />
 		<PackageReference Include="RabbitMQ.Client" Version="6.4.0" />

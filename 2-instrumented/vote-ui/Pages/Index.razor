@@ -32,7 +32,9 @@ else
             </div>
         </div>
     </div>
-    <BlazoredToasts Position="ToastPosition.BottomRight" ShowProgressBar="true"/>
+    <BlazoredToasts Position="ToastPosition.BottomRight" 
+                    ShowProgressBar="true" 
+                    ShowCloseButton="false" />
 }
 
 @code {
@@ -51,13 +53,13 @@ else
     private void IncrementVote(int candidateId, string candidateLabel)
     {
         VoteService.IncrementVote(candidateId);
-        ToastService.ShowSuccess($"Candidate {candidateLabel} has received your vote", "Thank you");
+        ToastService.ShowSuccess($"Candidate {candidateLabel} has received your vote");
     }
 
     private async Task ResetVotesAsync()
     {
         await VoteService.ResetVotesAsync();
-        ToastService.ShowError("Votes have been reset", "Reset");
+        ToastService.ShowError("Votes have been reset");
     }
 
     private async void GetVotesAsync()

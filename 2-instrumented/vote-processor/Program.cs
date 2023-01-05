@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Exporter;
+using OpenTelemetry.Extensions.Docker.Resources;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -28,6 +29,8 @@ var redis = redisConnection.GetDatabase();
 var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddService(GlobalData.ApplicationName, serviceVersion: GlobalData.ApplicationVersion)
     .AddTelemetrySdk()
+    // Populate platform details
+    .AddDetector(new DockerResourceDetector())
     .AddAttributes(new Dictionary<string, object>
     {
         [ResourceSemanticConventions.AttributeHostName] = Environment.MachineName,
@@ -43,7 +46,7 @@ using var tracerProvider = Sdk.CreateTracerProviderBuilder()
     // ensures that all spans are recorded and sent to exporter
     .SetSampler(new AlwaysOnSampler())
     // stream traces to the SpanExporter
-    .AddProcessor(new SimpleActivityExportProcessor(
+    .AddProcessor(new BatchActivityExportProcessor(
         // Select between Jaeger or OTLP SpanExporter
         config.GetValue<bool>("EnableOTLPExporter")
             // Sends metrics to an OTLP endpoint.

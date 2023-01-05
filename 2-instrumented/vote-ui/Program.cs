@@ -34,6 +34,8 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
     .AddService(GlobalData.ApplicationName, serviceVersion: GlobalData.ApplicationVersion)
     // add attributes for the OpenTelemetry SDK version
     .AddTelemetrySdk()
+    // Populate platform details
+    .AddDetector(new DockerResourceDetector())
     // add custom attributes
     .AddAttributes(new Dictionary<string, object>
     {
@@ -59,7 +61,6 @@ builder.Services.AddOpenTelemetry().WithTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
         // define the resource
-        //.AddDetector(new DockerResourceDetector())
         .SetResourceBuilder(resourceBuilder)
         // receive traces from our own custom sources
         .AddSource(GlobalData.SourceName)
@@ -69,7 +70,8 @@ builder.Services.AddOpenTelemetry().WithTracing(tracerProviderBuilder =>
         // ensures that all spans are recorded and sent to exporter
         .SetSampler(new AlwaysOnSampler())
         // stream traces to the SpanExporter
-        .AddProcessor(new SimpleActivityExportProcessor(
+        // BatchActivityExportProcessor processes spans on a separate thread unlike the SimpleActivityExportProcessor
+        .AddProcessor(new BatchActivityExportProcessor(
             // Select between Jaeger or OTLP SpanExporter
             builder.Configuration.GetValue<bool>("EnableOTLPExporter")
                 // Sends metrics to an OTLP endpoint.
