@@ -78,9 +78,6 @@ builder.Services.AddOpenTelemetry().WithTracing(tracerProviderBuilder =>
                 : new JaegerExporter(new() { AgentHost = builder.Configuration["Hosts:Jaeger"] })));
 });
 
-// Inject the tracer that we can use inside the application to write spans
-builder.Services.AddSingleton(TracerProvider.Default.GetTracer(GlobalData.SourceName, GlobalData.ApplicationVersion));
-
 var app = builder.Build();
 
 // API Endpoints

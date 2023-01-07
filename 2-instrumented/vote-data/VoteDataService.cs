@@ -13,11 +13,11 @@ public class VoteDataService
     private readonly VoteSettings _settings;
     private readonly Tracer _tracer;
 
-    public VoteDataService(IConnectionMultiplexer multiplexer, IOptions<VoteSettings> settings, Tracer tracer)
+    public VoteDataService(IConnectionMultiplexer multiplexer, IOptions<VoteSettings> settings, TracerProvider tracerProvider)
     {
         _redis = multiplexer.GetDatabase();
         _settings = settings.Value;
-        _tracer = tracer;
+        _tracer = tracerProvider.GetTracer(GlobalData.SourceName);
     }
 
     public async Task<Result> GetVotesAsync()
