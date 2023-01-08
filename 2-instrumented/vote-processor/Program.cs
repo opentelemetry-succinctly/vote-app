@@ -39,6 +39,8 @@ var resourceBuilder = ResourceBuilder.CreateDefault()
 
 // Configure tracing
 using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+    // Sets span status to ERROR on exception
+    .SetErrorStatusOnException()
     .SetResourceBuilder(resourceBuilder)
     // receive traces from our own custom sources
     .AddSource(GlobalData.SourceName)

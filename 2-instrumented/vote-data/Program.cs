@@ -56,6 +56,8 @@ builder.Logging.AddOpenTelemetry(loggerOptions =>
 builder.Services.AddOpenTelemetry().WithTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
+        // Sets span status to ERROR on exception
+        .SetErrorStatusOnException()
         // define the resource
         .SetResourceBuilder(resourceBuilder)
         // receive traces from our own custom sources

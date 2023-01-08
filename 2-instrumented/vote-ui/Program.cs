@@ -5,8 +5,6 @@ using Blazored.Toast;
 using Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -63,6 +61,8 @@ builder.Logging.AddOpenTelemetry(loggerOptions =>
 builder.Services.AddOpenTelemetry().WithTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
+        // Sets span status to ERROR on exception
+        .SetErrorStatusOnException()
         // define the resource
         .SetResourceBuilder(resourceBuilder)
         // receive traces from our own custom sources
