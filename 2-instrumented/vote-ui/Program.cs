@@ -4,6 +4,9 @@ using System.Runtime.InteropServices;
 using Blazored.Toast;
 using Common;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -131,4 +134,14 @@ app.UseRouting();
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 
+// Endpoint to record exception
+app.MapGet("/exception/", (TracerProvider tracerProvider) =>
+    {
+        var tracer = tracerProvider.GetTracer(GlobalData.SourceName);
+        using var span = tracer.StartActiveSpan("Exception span");
+        span.RecordException(new ApplicationException("Error processing the request"));
+        return Results.Ok();
+    })
+    .WithName("Exception")
+    .Produces(StatusCodes.Status200OK);
 app.Run();
