@@ -58,58 +58,83 @@ builder.Logging.AddOpenTelemetry(loggerOptions =>
 });
 
 // Configure tracing
-builder.Services.AddOpenTelemetry().WithTracing(tracerProviderBuilder =>
-{
-    tracerProviderBuilder
-        // Sets span status to ERROR on exception
-        .SetErrorStatusOnException()
-        // define the resource
-        .SetResourceBuilder(resourceBuilder)
-        // receive traces from our own custom sources
-        .AddSource(GlobalData.SourceName)
-        // receive traces from built-in sources
-        .AddAspNetCoreInstrumentation()
-        .AddHttpClientInstrumentation()
-        // ensures that all spans are recorded and sent to exporter
-        .SetSampler(new AlwaysOnSampler())
-        // stream traces to the SpanExporter
-        // BatchActivityExportProcessor processes spans on a separate thread unlike the SimpleActivityExportProcessor
-        .AddProcessor(new BatchActivityExportProcessor(
-            // Select between Jaeger or OTLP SpanExporter
-            builder.Configuration.GetValue<bool>("EnableOTLPExporter")
-                // Sends metrics to an OTLP endpoint.
-                // Use this to send traces to the OTEL collector.
-                ? new OtlpTraceExporter(new()
-                {
-                    Endpoint = GlobalData.GetOtlpTracesExporterEndpoint(builder.Configuration["Hosts:OTLP"]!),
-                })
-                : new JaegerExporter(new() { AgentHost = builder.Configuration["Hosts:Jaeger"] })));
-});
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerProviderBuilder =>
+    {
+        tracerProviderBuilder
+            // Sets span status to ERROR on exception
+            .SetErrorStatusOnException()
+            // define the resource
+            .SetResourceBuilder(resourceBuilder)
+            // receive traces from our own custom sources
+            .AddSource(GlobalData.SourceName)
+            // receive traces from built-in sources
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            // ensures that all spans are recorded and sent to exporter
+            .SetSampler(new AlwaysOnSampler())
+            // stream traces to the SpanExporter
+            // BatchActivityExportProcessor processes spans on a separate thread unlike the SimpleActivityExportProcessor
+            .AddProcessor(new BatchActivityExportProcessor(
+                // Select between Jaeger or OTLP SpanExporter
+                builder.Configuration.GetValue<bool>("EnableOTLPExporter")
+                    // Sends metrics to an OTLP endpoint.
+                    // Use this to send traces to the OTEL collector.
+                    ? new OtlpTraceExporter(new()
+                    {
+                        Endpoint = GlobalData.GetOtlpTracesExporterEndpoint(builder.Configuration["Hosts:OTLP"]!),
+                    })
+                    : new JaegerExporter(new() { AgentHost = builder.Configuration["Hosts:Jaeger"] })));
+    });
 
 // Configure metrics
-builder.Services.AddOpenTelemetry().WithMetrics(meterProviderBuilder =>
-{
-    meterProviderBuilder
-        // add rich tags to our metrics
-        .SetResourceBuilder(resourceBuilder)
-        // receive metrics from built-in sources
-        .AddAspNetCoreInstrumentation()
-        .AddHttpClientInstrumentation()
-        // receive metrics from custom sources
-        .AddMeter(GlobalData.SourceName)
-        // expose metrics in Prometheus exposition format
-        .AddPrometheusExporter();
-
-    if (builder.Configuration.GetValue<bool>("EnableOTLPExporter"))
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(meterProviderBuilder =>
     {
-        // Sends metrics to an OTLP endpoint.
-        // Use this to send traces to the OTEL collector.
-        meterProviderBuilder.AddOtlpExporter(otlpOptions =>
+        meterProviderBuilder
+            // add rich tags to our metrics
+            .SetResourceBuilder(resourceBuilder)
+            // receive metrics from built-in sources
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            // receive metrics from custom sources
+            .AddMeter(GlobalData.SourceName)
+            // add view to customize output
+            // uncomment the following code to enable the view
+            //.AddView(instrument =>
+            //{
+            //    // remove all instruments except vote
+            //    if (instrument.Name != "vote")
+            //    {
+            //        return MetricStreamConfiguration.Drop;
+            //    }
+
+            //    if (instrument.Name == "vote")
+            //    {
+            //        // customize the vote intrument
+            //        return new
+            //        {
+            //            Name = "app_vote", 
+            //            // remove all dimensions except host
+            //            TagKeys = new[] { "host" },
+            //        };
+            //    }
+
+            //    return null;
+            //})
+            // expose metrics in Prometheus exposition format
+            .AddPrometheusExporter();
+
+        if (builder.Configuration.GetValue<bool>("EnableOTLPExporter"))
         {
-            otlpOptions.Endpoint = GlobalData.GetOtlpMetricsExporterEndpoint(builder.Configuration["Hosts:OTLP"]!);
-        });
-    }
-});
+            // Sends metrics to an OTLP endpoint.
+            // Use this to send traces to the OTEL collector.
+            meterProviderBuilder.AddOtlpExporter(otlpOptions =>
+            {
+                otlpOptions.Endpoint = GlobalData.GetOtlpMetricsExporterEndpoint(builder.Configuration["Hosts:OTLP"]!);
+            });
+        }
+    });
 
 builder.Services.AddHttpClient<VoteDataClient>(client =>
     client.BaseAddress = new($"http://{builder.Configuration["Hosts:VoteDataService"]!}:8081"));
