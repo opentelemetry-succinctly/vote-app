@@ -18,9 +18,9 @@ public class VoteService
 {
     private static readonly TextMapPropagator Propagator = Propagators.DefaultTextMapPropagator;
     private readonly AppMetrics _appMetrics;
-    private readonly ILogger<VoteService> _logger;
     private readonly IConfiguration _config;
     private readonly IHttpContextAccessor _contextAccessor;
+    private readonly ILogger<VoteService> _logger;
     private readonly Tracer _tracer;
     private readonly VoteDataClient _voteDataClient;
 
@@ -58,10 +58,10 @@ public class VoteService
     {
         _logger.LogInformation("Received vote for candidate {candidate}", candidate);
         var tags = new TagList
-    {
-        { "user-agent", _contextAccessor.HttpContext?.Request.Headers.UserAgent },
-        { "host", _contextAccessor.HttpContext?.Request.Headers.Host.ToString() },
-    };
+        {
+            { "user-agent", _contextAccessor.HttpContext?.Request.Headers.UserAgent },
+            { "host", _contextAccessor.HttpContext?.Request.Headers.Host.ToString() },
+        };
         _appMetrics.VoteCounter.Add(1, tags);
 
         var userAgent = _contextAccessor.HttpContext?.Request.Headers.UserAgent;
