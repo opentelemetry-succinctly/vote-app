@@ -1,0 +1,41 @@
+FROM mcr.microsoft.com/dotnet/aspnet:7.0-alpine AS base
+WORKDIR /app
+EXPOSE 8081
+
+ENV ASPNETCORE_URLS=http://+:8081
+# OTEL instrumentation required envt variables
+ENV OTEL_DOTNET_AUTO_HOME=/app/otel-ai
+ENV OTEL_SERVICE_NAME=vote-data-ai
+ENV OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production,service.version=1.0.0.0
+ENV OS_TYPE=linux-musl
+ENV CORECLR_ENABLE_PROFILING=1
+ENV CORECLR_PROFILER={918728DD-259F-4A6A-AC2B-B85E1B658318}
+ENV CORECLR_PROFILER_PATH=$OTEL_DOTNET_AUTO_HOME/OpenTelemetry.AutoInstrumentation.Native.so 
+ENV DOTNET_STARTUP_HOOKS=$OTEL_DOTNET_AUTO_HOME/netcoreapp3.1/OpenTelemetry.AutoInstrumentation.StartupHook.dll
+ENV DOTNET_ADDITIONAL_DEPS=$OTEL_DOTNET_AUTO_HOME/AdditionalDeps
+ENV DOTNET_SHARED_STORE=$OTEL_DOTNET_AUTO_HOME/store
+ENV OTEL_DOTNET_AUTO_INTEGRATIONS_FILE=$OTEL_DOTNET_AUTO_HOME/integrations.json
+
+FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine AS build
+ENV OTEL_DOTNET_AUTO_HOME=/app/otel-ai
+WORKDIR /src
+COPY ["vote-data/vote-data.csproj", "vote-data/"]
+COPY ["../common/common.csproj", "common/"]
+COPY ["Directory.Build.props", "./"]
+RUN dotnet restore "vote-data/vote-data.csproj"
+COPY . .
+WORKDIR "/src/vote-data"
+RUN dotnet build "vote-data.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "vote-data.csproj" -c Release -o /app/publish /p:UseAppHost=false
+# Download OTEL AI binaries
+RUN curl -sSfL https://raw.githubusercontent.com/open-telemetry/opentelemetry-dotnet-instrumentation/v0.4.0-beta.1/otel-dotnet-auto-install.sh -O
+RUN sh otel-dotnet-auto-install.sh
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+# Add OTEL binaries to published app
+COPY --from=publish $OTEL_DOTNET_AUTO_HOME $OTEL_DOTNET_AUTO_HOME
+ENTRYPOINT ["dotnet", "vote-data.dll"]

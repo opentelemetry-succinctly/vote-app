@@ -1,0 +1,81 @@
+# Launch command: docker-compose up
+name: vote-app
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.39
+    container_name: jaeger
+    hostname: jaeger
+    ports:
+      - 16686:16686
+
+  prometheus:
+    image: prom/prometheus:v2.40.1
+    container_name: prometheus
+    volumes:
+      - ./config/prometheus/config.yml/:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+
+  redis:
+    image: redis:6.2
+    container_name: redis
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    container_name: rabbitmq
+    ports:
+      - 15672:15672
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  vote-ui:
+    image: vote-ui
+    container_name: vote-ui
+    depends_on:
+      - vote-data
+      - vote-processor
+      - redis
+      - rabbitmq
+    build:
+      context: .
+      dockerfile: vote-ui/Dockerfile
+    environment:
+      Queue__Host: rabbitmq
+      Hosts__VoteDataService: vote-data
+      Hosts__Jaeger: jaeger
+    ports:
+      - 8080:8080
+
+  vote-data:
+    image: vote-data
+    container_name: vote-data
+    depends_on:
+      - redis
+    build:
+      context: .
+      dockerfile: vote-data/Dockerfile
+    environment:
+      Hosts__Redis: redis
+      Hosts__Jaeger: jaeger
+
+  vote-processor:
+    image: vote-processor
+    container_name: vote-processor
+    depends_on:
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    build:
+      context: .
+      dockerfile: vote-processor/Dockerfile
+    environment:
+      Hosts__Redis: redis
+      Queue__Host: rabbitmq
+      Hosts__Jaeger: jaeger

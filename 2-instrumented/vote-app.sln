@@ -1,0 +1,69 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{473F0132-ACCB-4B48-AFD9-CE2D5DEB3C0E}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		debug.cmd = debug.cmd
+		Directory.Build.props = Directory.Build.props
+		docker-compose.collector.yml = docker-compose.collector.yml
+		docker-compose.yml = docker-compose.yml
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "vote-data", "vote-data\vote-data.csproj", "{411A8D0C-2234-4707-A548-18ABC10EFE51}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "vote-ui", "vote-ui\vote-ui.csproj", "{F5678FF0-F0AF-4CBF-BF25-10737394A1B7}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "common", "common\common.csproj", "{F5E8B282-16EE-44E9-9824-C9B4D8095865}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "vote-processor", "vote-processor\vote-processor.csproj", "{2871806F-4CA3-42F8-B4CD-C8D4B94C6813}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "config", "config", "{4C903A81-ACB3-4223-96B8-D034C4ED12E6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "prometheus", "prometheus", "{9691E0C2-F3EB-4477-8ACC-777BDBEEB864}"
+	ProjectSection(SolutionItems) = preProject
+		config\prometheus\config.yml = config\prometheus\config.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "collector", "collector", "{507DDE56-D8E7-4370-AA4F-67FC4D5B195B}"
+	ProjectSection(SolutionItems) = preProject
+		config\collector\config.yml = config\collector\config.yml
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{411A8D0C-2234-4707-A548-18ABC10EFE51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{411A8D0C-2234-4707-A548-18ABC10EFE51}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{411A8D0C-2234-4707-A548-18ABC10EFE51}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{411A8D0C-2234-4707-A548-18ABC10EFE51}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5678FF0-F0AF-4CBF-BF25-10737394A1B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5678FF0-F0AF-4CBF-BF25-10737394A1B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5678FF0-F0AF-4CBF-BF25-10737394A1B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5678FF0-F0AF-4CBF-BF25-10737394A1B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5E8B282-16EE-44E9-9824-C9B4D8095865}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5E8B282-16EE-44E9-9824-C9B4D8095865}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5E8B282-16EE-44E9-9824-C9B4D8095865}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5E8B282-16EE-44E9-9824-C9B4D8095865}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2871806F-4CA3-42F8-B4CD-C8D4B94C6813}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2871806F-4CA3-42F8-B4CD-C8D4B94C6813}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2871806F-4CA3-42F8-B4CD-C8D4B94C6813}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2871806F-4CA3-42F8-B4CD-C8D4B94C6813}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{9691E0C2-F3EB-4477-8ACC-777BDBEEB864} = {4C903A81-ACB3-4223-96B8-D034C4ED12E6}
+		{507DDE56-D8E7-4370-AA4F-67FC4D5B195B} = {4C903A81-ACB3-4223-96B8-D034C4ED12E6}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AE3E1525-9649-4231-93C8-00B9193F65AF}
+	EndGlobalSection
+EndGlobal

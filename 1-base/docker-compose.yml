@@ -1,0 +1,78 @@
+# Note: Uncomment the commented code and use the *.ai Dockerfiles to
+# auto-instrument the applications and send the traces to the Jaeger service
+name: vote-app-base
+services:
+  redis:
+    image: redis:6.2
+    container_name: redis
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    container_name: rabbitmq
+    ports:
+      - 15672:15672
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  vote-ui:
+    image: vote-ui
+    container_name: vote-ui
+    depends_on:
+      - vote-data
+      - vote-processor
+      - redis
+      - rabbitmq
+    build:
+      context: .
+      dockerfile: vote-ui/Dockerfile
+      #dockerfile: vote-ui/Dockerfile.ai
+    environment:
+      Queue__Host: rabbitmq
+      Hosts__VoteDataService: vote-data
+      #OTEL_TRACES_EXPORTER: jaeger
+      #OTEL_EXPORTER_JAEGER_AGENT_HOST: jaeger
+    ports:
+      - 8080:8080
+
+  vote-data:
+    image: vote-data
+    container_name: vote-data
+    depends_on:
+      - redis
+    build:
+      context: .
+      dockerfile: vote-data/Dockerfile
+      #dockerfile: vote-data/Dockerfile.ai
+    environment:
+      Hosts__Redis: redis
+      #OTEL_TRACES_EXPORTER: jaeger
+      #OTEL_EXPORTER_JAEGER_AGENT_HOST: jaeger
+
+  vote-processor:
+    image: vote-processor
+    container_name: vote-processor
+    depends_on:
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    build:
+      context: .
+      # Auto-instrumentation does not support console applications
+      dockerfile: vote-processor/Dockerfile
+    environment:
+      Hosts__Redis: redis
+      Queue__Host: rabbitmq
+      
+  #jaeger:
+  #  image: jaegertracing/all-in-one:1.39
+  #  container_name: jaeger
+  #  hostname: jaeger
+  #  ports:
+  #    - 16686:16686

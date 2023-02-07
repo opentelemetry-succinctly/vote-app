@@ -1,0 +1,107 @@
+# Launch command: docker-compose -f docker-compose.collector.yml up
+name: vote-app-collector
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.39
+    container_name: jaeger
+    hostname: jaeger
+    ports:
+      - 16686:16686
+
+  jaeger-agent:
+    container_name: jaeger-agent
+    hostname: jaeger-agent
+    image: jaegertracing/jaeger-agent:1.41
+    command: ['--reporter.grpc.host-port=otel-collector:14250']
+
+  prometheus:
+    image: prom/prometheus:v2.40.1
+    container_name: prometheus
+    command: 
+      - '--web.enable-remote-write-receiver' # enable remote write integration
+      - '--config.file=/etc/prometheus/prometheus.yml' # default configuration
+    ports:
+      - 9090:9090
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.69.0
+    container_name: otel-collector
+    user: 0:0
+    depends_on:
+      - jaeger
+      - prometheus
+      - vote-ui
+      - vote-data
+    volumes:
+      - ./config/collector/config.yml:/etc/config.yml
+    command: ['--config=/etc/config.yml']
+    ports:
+      - 13133:13133 # health_check extension
+
+  redis:
+    image: redis:6.2
+    container_name: redis
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    container_name: rabbitmq
+    ports:
+      - 15672:15672
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  vote-ui:
+    image: vote-ui
+    container_name: vote-ui
+    depends_on:
+      - vote-data
+      - vote-processor
+      - redis
+      - rabbitmq
+    build:
+      context: .
+      dockerfile: vote-ui/Dockerfile
+    environment:
+      EnableOTLPExporter: true
+      Queue__Host: rabbitmq
+      Hosts__VoteDataService: vote-data
+      Hosts__Jaeger: jaeger-agent
+      Hosts__OTLP: otel-collector
+    ports:
+      - 8080:8080
+
+  vote-data:
+    image: vote-data
+    container_name: vote-data
+    depends_on:
+      - redis
+    build:
+      context: .
+      dockerfile: vote-data/Dockerfile
+    environment:
+      Hosts__Redis: redis
+      EnableOTLPExporter: true
+      Hosts__OTLP: otel-collector
+      Hosts__Jaeger: jaeger-agent
+
+  vote-processor:
+    image: vote-processor
+    container_name: vote-processor
+    depends_on:
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    build:
+      context: .
+      dockerfile: vote-processor/Dockerfile
+    environment:
+      Hosts__Redis: redis
+      Queue__Host: rabbitmq
+      Hosts__Jaeger: jaeger-agent

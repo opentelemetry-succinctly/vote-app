@@ -1,0 +1,79 @@
+﻿@page "/"
+
+@inject VoteService VoteService
+@inject IToastService ToastService
+@using VoteUI.Data
+@using Common
+@using System.Threading
+@implements IDisposable
+
+<PageTitle>@Title</PageTitle>
+
+@if (_votes == default)
+{
+    <p>
+        <em>Loading...</em>
+    </p>
+}
+else
+{
+    <div id="container">
+        <div style="text-align: center;">
+            <div id="logo">@Title</div>
+            <div id="space"></div>
+            <div id="form">
+                <button name="vote" @onclick="() => IncrementVote(1, _votes.Vote1.Label)" class="button button1">@_votes.Vote1.Label</button>
+                <button name="vote" @onclick="() => IncrementVote(2, _votes.Vote2.Label)" class="button button2">@_votes.Vote2.Label</button>
+                <button name="vote" value="reset" @onclick="async () => await ResetVotesAsync()" class="button button3">Reset</button>
+                <div id="space"></div>
+                <div id="space"></div>
+                <div id="results"> <b>@_votes.Vote1.Label</b> - @_votes.Vote1.Count | <b>@_votes.Vote2.Label</b> - @_votes.Vote2.Count </div>
+                <div id="message">Results refresh every @RefreshDuration seconds</div>
+            </div>
+        </div>
+    </div>
+    <BlazoredToasts Position="ToastPosition.BottomRight"
+                ShowProgressBar="true"
+                ShowCloseButton="false" />
+}
+
+@code {
+    private (Vote Vote1, Vote Vote2) _votes;
+        private const string Title = "Vote App";
+        private const int RefreshDuration = 10;
+    private PeriodicTimer _timer = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _votes = await VoteService.GetVotesAsync();
+        _timer = new(TimeSpan.FromSeconds(RefreshDuration));
+        GetVotesAsync();
+    }
+
+    private void IncrementVote(int candidateId, string candidateLabel)
+    {
+        VoteService.IncrementVote(candidateId);
+        ToastService.ShowSuccess($"Candidate {candidateLabel} has received your vote");
+    }
+
+    private async Task ResetVotesAsync()
+    {
+        await VoteService.ResetVotesAsync();
+        ToastService.ShowError("Votes have been reset");
+    }
+
+    private async void GetVotesAsync()
+    {
+        while (await _timer.WaitForNextTickAsync())
+        {
+            _votes = await VoteService.GetVotesAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+
+}
